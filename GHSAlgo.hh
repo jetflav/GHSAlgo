@@ -1,5 +1,6 @@
-/// Implementation of the Gauld-Huss-Stagnitto flavour dressing
-/// algorithm as described in https://arxiv.org/abs/2208.11138 (v1)
+/// Implementation of the flavour dressing algorithm
+/// by Rhorry Gauld, Alexander Huss and Giovanni Stagnitto,
+/// as described in https://arxiv.org/abs/2208.11138 (v1)
 ///
 /// Authors: Fabrizio Caola, Radoslaw Grabarczyk, Maxwell Hutt,
 ///          Gavin P. Salam, Ludovic Scyboz, and Jesse Thaler
