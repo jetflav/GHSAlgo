@@ -238,11 +238,11 @@ public:
       // give a flav dependence (only opposite flavours can annihilate)
       FlavInfo flavA = this->_jet.user_info<FlavHistory>().current_flavour();
       FlavInfo flavB = other_in->_jet.user_info<FlavHistory>().current_flavour();
-      if(!(flavA + flavB).is_flavourless()) {
-        return numeric_limits<double>::max();
-      } else {
+      // if(!(flavA + flavB).is_flavourless()) {
+      //   return numeric_limits<double>::max();
+      // } else {
         return dij(first,other);
-      }
+      // }
     } else {
       // ---- other must be a jet -----
       // first check to see if this particle is associated with any jet at all
@@ -294,7 +294,7 @@ private:
 // given initial state particles, it outputs the f^hat "aggregated flavour" jets as defined in the paper
 // using the softdrop-like step, together with the information needed to associate them with a given jet.
 std::vector<PseudoJet> create_flavoured_clusters_GHS(const std::vector<PseudoJet> &jets_in, double beta,
-                                                   double zcut, double Rcut, bool use_fix_as2) {
+                                                   double zcut, double Rcut) {
 
   assert(jets_in.size() != 0);
   const ClusterSequence & cs = *(jets_in[0].associated_cs());
@@ -367,45 +367,45 @@ std::vector<PseudoJet> create_flavoured_clusters_GHS(const std::vector<PseudoJet
       // in case both pseudojets are flavoured, we add them as well (with net
       // flavour summation)
       // NB: not sure this works!
-      if (use_fix_as2) {
-        // check SD condition
-        double z = min(initial_particles[iA].pt(), initial_particles[iB].pt())
-                    /(initial_particles[iA].pt() + initial_particles[iB].pt());
+      // if (use_fix_as2) {
+      //   // check SD condition
+      //   double z = min(initial_particles[iA].pt(), initial_particles[iB].pt())
+      //               /(initial_particles[iA].pt() + initial_particles[iB].pt());
 
-        // there is an issue with pow() in the dddreal/qdreal numerical types
-        // The types use pow(a,b) = e^(b*log(a)).
-        // Instead we differentiate cases as follows:
-        //double cut = zcut*pow(dij/Rcut, beta);
-        assert(beta > 0);
-        double cut = zcut*pow(dij/Rcut, beta);
+      //   // there is an issue with pow() in the dddreal/qdreal numerical types
+      //   // The types use pow(a,b) = e^(b*log(a)).
+      //   // Instead we differentiate cases as follows:
+      //   //double cut = zcut*pow(dij/Rcut, beta);
+      //   assert(beta > 0);
+      //   double cut = zcut*pow(dij/Rcut, beta);
 
-        // if SD condition passes, we merge the two flavoured particles
-        if (z > cut) {
-          // merge
-          PseudoJet new_pseudojet = initial_particles[iA];
-          new_pseudojet.reset_momentum(initial_particles[iA] + initial_particles[iB]); //<- resetting only the momentum keeps the
-          new_pseudojet.set_user_index(current_user_index);
-          FlavInfo flav = FlavHistory::current_flavour_of(initial_particles[iA]) + FlavHistory::current_flavour_of(initial_particles[iB]);
-          /// set FlavInfo attribute
-          new_pseudojet.set_user_info(new FlavHistory(flav));
+      //   // if SD condition passes, we merge the two flavoured particles
+      //   if (z > cut) {
+      //     // merge
+      //     PseudoJet new_pseudojet = initial_particles[iA];
+      //     new_pseudojet.reset_momentum(initial_particles[iA] + initial_particles[iB]); //<- resetting only the momentum keeps the
+      //     new_pseudojet.set_user_index(current_user_index);
+      //     FlavInfo flav = FlavHistory::current_flavour_of(initial_particles[iA]) + FlavHistory::current_flavour_of(initial_particles[iB]);
+      //     /// set FlavInfo attribute
+      //     new_pseudojet.set_user_info(new FlavHistory(flav));
 
-          initial_particles.push_back(new_pseudojet);
-          nnh.merge_jets(iA, iB, new_pseudojet, initial_particles.size()-1);
-          initial_particles[iA].set_user_index(expired_user_index);
-          initial_particles[iB].set_user_index(expired_user_index);
-        } else {
-          // Otherwise, remove them like in the original algorithm
-          nnh.remove_jet(iA);
-          nnh.remove_jet(iB);
-          n_particles -= 2;
-          continue;
-        }
-      } else { // < original algorithm as in 2208.11138v1
+      //     initial_particles.push_back(new_pseudojet);
+      //     nnh.merge_jets(iA, iB, new_pseudojet, initial_particles.size()-1);
+      //     initial_particles[iA].set_user_index(expired_user_index);
+      //     initial_particles[iB].set_user_index(expired_user_index);
+      //   } else {
+      //     // Otherwise, remove them like in the original algorithm
+      //     nnh.remove_jet(iA);
+      //     nnh.remove_jet(iB);
+      //     n_particles -= 2;
+      //     continue;
+      //   }
+      // } else { // < original algorithm as in 2208.11138v1
         nnh.remove_jet(iA);
         nnh.remove_jet(iB);
         n_particles -= 2;
         continue;
-      }
+      // }
 
     } else {
 
@@ -467,7 +467,7 @@ std::vector<PseudoJet> create_flavoured_clusters_GHS(const std::vector<PseudoJet
 
 std::vector<PseudoJet> dress_GHS(const std::vector<PseudoJet> & jets_in, 
                                 const std::vector<PseudoJet> & flavoured_clusters,
-                                double alpha, double omega){
+                                 double alpha, double omega, bool use_fix_as2){
   vector<PseudoJet> clusters = flavoured_clusters;
   vector<PseudoJet> all;
   vector<PseudoJet> jets = jets_in;
@@ -538,12 +538,30 @@ std::vector<PseudoJet> dress_GHS(const std::vector<PseudoJet> & jets_in,
         cout << "adding flavour of " << iB << " to " << iA << ", removing " << iB << endl;
 #endif
       } else {
+        if (use_fix_as2) {
+          // merge
+          PseudoJet new_pseudojet = all[iA];
+          new_pseudojet.reset_momentum(all[iA] + all[iB]); //<- resetting only the momentum keeps the
+          new_pseudojet.set_user_index(0);
+          FlavInfo flav = FlavHistory::current_flavour_of(all[iA]) + FlavHistory::current_flavour_of(all[iB]);
+          /// set FlavInfo attribute
+          new_pseudojet.set_user_info(new FlavHistory(flav));
+#ifdef VERBOSE
+        cout << "two flavoured clusters combine." << endl;
+        cout << "iA = "  << iA; print_PJ(&cout, all[iA], 12, true, true); cout << endl;
+        cout << "iB = "  << iB; print_PJ(&cout, all[iB], 12, true, true); cout << endl;
+        cout << "into "; print_PJ(&cout, new_pseudojet, 12, true, true); cout << endl;
+#endif          
+          all.push_back(new_pseudojet);
+          nnh.merge_jets(iA, iB, new_pseudojet, all.size()-1);
+        } else {
         // both are particles, so annihilate their flavour, i.e. remove them from the list
 #ifdef VERBOSE
         cout << "two flavoured clusters annihilate." << endl;
 #endif
         nnh.remove_jet(iA);
         nnh.remove_jet(iB);
+        }
       }
     } else {
    //   assert(iA >= njets && "for beam clustering, iA must be a particle");
@@ -578,7 +596,7 @@ std::vector<PseudoJet> run_GHS(const std::vector<PseudoJet> & jets_in, double pt
   cout << " -- generate flavour clusters -- " << endl;
 #endif
   /// these are the "flavoured particles and clusters" from 2208.11138v1, p.2
-  vector<PseudoJet> flavoured_clusters = create_flavoured_clusters_GHS(jets_in, beta, zcut, Rcut, use_fix_as2);
+  vector<PseudoJet> flavoured_clusters = create_flavoured_clusters_GHS(jets_in, beta, zcut, Rcut);
 
   /// different (non-default) association criteria would go here. For instance (in the future): cluster flavoured_clusters as ghosts
   /// with jets_in; or test whether a cluster is less than R_tag away from a jet. By default, flavoured_clusters are associated
@@ -596,7 +614,7 @@ std::vector<PseudoJet> run_GHS(const std::vector<PseudoJet> & jets_in, double pt
 #ifdef VERBOSE
   cout << " -- dressing jets -- " << endl;
 #endif
-  vector<PseudoJet> final_jets = dress_GHS(selected_jets, flavoured_clusters, alpha, omega);
+  vector<PseudoJet> final_jets = dress_GHS(selected_jets, flavoured_clusters, alpha, omega, use_fix_as2);
 #ifdef VERBOSE
   cout << "final dressed jets = " << endl;
   for (auto & a : final_jets){

@@ -42,12 +42,11 @@ std::vector<PseudoJet> run_GHS(const std::vector<PseudoJet> & jets_in, double pt
                             double omega=0.0, bool use_fix_as2 = false);
 
 std::vector<PseudoJet> create_flavoured_clusters_GHS(const std::vector<PseudoJet> & jets_in,
-                                                double beta=2, double zcut=0.1, double Rcut=0.1,
-                                                bool use_fix_as2 = false);
+                                                     double beta=2, double zcut=0.1, double Rcut=0.1);
 
 std::vector<PseudoJet> dress_GHS(const std::vector<PseudoJet> & jets_in, 
                                 const std::vector<PseudoJet> & flavoured_clusters,
-                                double alpha, double omega);
+                                 double alpha, double omega, bool use_fix_as2 = false);
 
 
 } // namespace contrib
