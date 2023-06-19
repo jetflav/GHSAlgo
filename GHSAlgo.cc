@@ -238,11 +238,11 @@ public:
       // give a flav dependence (only opposite flavours can annihilate)
       FlavInfo flavA = this->_jet.user_info<FlavHistory>().current_flavour();
       FlavInfo flavB = other_in->_jet.user_info<FlavHistory>().current_flavour();
-      // if(!(flavA + flavB).is_flavourless()) {
-      //   return numeric_limits<double>::max();
-      // } else {
+      if(!(flavA + flavB).is_flavourless()) {
+        return numeric_limits<double>::max();
+      } else {
         return dij(first,other);
-      // }
+      }
     } else {
       // ---- other must be a jet -----
       // first check to see if this particle is associated with any jet at all
