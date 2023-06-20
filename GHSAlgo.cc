@@ -11,8 +11,8 @@
 #include <iostream>    
 #include <iomanip>
 
-//#define VERBOSE
-//#define VVERBOSE
+#define VERBOSE
+#define VVERBOSE
 
 FASTJET_BEGIN_NAMESPACE      // defined in fastjet/internal/base.hh
 namespace contrib{
@@ -136,19 +136,6 @@ public:
   
     }
 
-    // if it's a particle, see if it's associated with any of the jets
-    // and record the information
-    if (is_particle()) {
-      for (unsigned i = 0; i < _info->jets.size(); i++) {
-        //cout << jet << " associated with ?" << _info->jets[i] << ": ";
-        if (jet.is_inside(_info->jets[i])) {
-          _associated_jet = i;
-          //cout << "yes" << endl;
-          break;
-        }
-        //cout << "no" << endl;
-      }
-    }
 
     // now, evalute the beam distance for the PseudoJet
    if (is_jet()) {
@@ -157,7 +144,7 @@ public:
    } else if (is_particle()) {
 
      // beam distance is defined only if the particle has no assigned jet
-     if (_associated_jet == -1) {
+     if (associated_jet() == -1) {
        double ptBp = 0, ptBm = 0;
        for (const auto & j: _info->jets) {
          // _info->jets are PJs not BriefJets (as they must be to have an associated cs)
@@ -184,8 +171,10 @@ public:
 
    }
   }
-  bool   is_jet()        const {return _jet.user_index() == 1;}
-  bool   is_particle()   const {return _jet.user_index() == 0;}
+  //> idx in jet if associated [0,...,jets.size()];  -1 if unassociated; 0 if jet
+  int    associated_jet() const {return abs(_jet.user_index()) - 1;}
+  bool   is_jet()         const {return _jet.user_index() == 1;}
+  bool   is_particle()    const {return _jet.user_index() <= 0;}
 
   static double geometrical_distance_squared(const GHSBriefJet *first, const GHSBriefJet *other){
 
@@ -238,7 +227,9 @@ public:
       // give a flav dependence (only opposite flavours can annihilate)
       FlavInfo flavA = this->_jet.user_info<FlavHistory>().current_flavour();
       FlavInfo flavB = other_in->_jet.user_info<FlavHistory>().current_flavour();
-      if(!(flavA + flavB).is_flavourless()) {
+      if ( !flavA.is_flavourless() &&
+           !flavB.is_flavourless() &&
+           !(flavA + flavB).is_flavourless()) {
         return numeric_limits<double>::max();
       } else {
         return dij(first,other);
@@ -247,9 +238,9 @@ public:
       // ---- other must be a jet -----
       // first check to see if this particle is associated with any jet at all
       // (if not there is no distance)
-      if (first->_associated_jet < 0) return numeric_limits<double>::max();
+      if (first->associated_jet() < 0) return numeric_limits<double>::max();
       // then see if it's associated with specifically with other 
-      if (_info->jets[first->_associated_jet].cluster_hist_index() 
+      if (_info->jets[first->associated_jet()].cluster_hist_index()
                                 == other->_jet.cluster_hist_index()) {
         return dij(first,other);
       } else {
@@ -277,15 +268,8 @@ public:
             * min(pow(ptf,2-alpha), pow(pto,2-alpha));
 
   }
-  int associated_jet(){
-    return _associated_jet;
-  }
-  void associate_with(int index_in_jets_array){
-    _associated_jet = index_in_jets_array;
-  }
 
 private:
-  int       _associated_jet = -1;
   PseudoJet _jet;
   GHSInfo * _info;
   double  _diB, _pt2, _rap, _phi, _nx, _ny;
@@ -489,7 +473,16 @@ std::vector<PseudoJet> dress_GHS(const std::vector<PseudoJet> & jets_in,
     all.push_back(j);
   }
   for (auto & c : clusters){
-    c.set_user_index(0); //< the signal that it is a flavour cluster
+    //> value <= 0 indicates that we're dealing with a flavour cluster
+    //>   0:  flavour cluster not associated with a jet
+    //>  -i:  flavour cluster associated with jet `i`
+    c.set_user_index(0); //> start with an unassociated cluster
+    for (unsigned i = 0; i < jets.size(); i++) {
+      if (c.is_inside(jets[i])) {
+        c.set_user_index(-1-i); //> need -1 offset since counting starts at 0
+        break;
+      }
+    }
     all.push_back(c);
   }
   
@@ -515,7 +508,7 @@ std::vector<PseudoJet> dress_GHS(const std::vector<PseudoJet> & jets_in,
 #endif
 
     // LS-2023-02-10: not sure this is very safe...
-    if (dij == numeric_limits<double>::max()) {
+    if (dij > 0.9*numeric_limits<double>::max()) {
       break;
     }
     if (iB >= 0) {
@@ -538,11 +531,18 @@ std::vector<PseudoJet> dress_GHS(const std::vector<PseudoJet> & jets_in,
         cout << "adding flavour of " << iB << " to " << iA << ", removing " << iB << endl;
 #endif
       } else {
+        //> iA & iB are both flavour clusters
         if (use_fix_as2) {
           // merge
           PseudoJet new_pseudojet = all[iA];
           new_pseudojet.reset_momentum(all[iA] + all[iB]); //<- resetting only the momentum keeps the
-          new_pseudojet.set_user_index(0);
+          //> determine the jet association for the merged cluster:
+          //> can only be associated with a jet if *both* clusters were associated with the *same* jet
+          if (all[iA].user_index() == all[iB].user_index()) {
+            new_pseudojet.set_user_index(all[iA].user_index());
+          } else {
+            new_pseudojet.set_user_index(0);
+          }
           FlavInfo flav = FlavHistory::current_flavour_of(all[iA]) + FlavHistory::current_flavour_of(all[iB]);
           /// set FlavInfo attribute
           new_pseudojet.set_user_info(new FlavHistory(flav));
