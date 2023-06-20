@@ -11,8 +11,8 @@
 #include <iostream>    
 #include <iomanip>
 
-#define VERBOSE
-#define VVERBOSE
+//#define VERBOSE
+//#define VVERBOSE
 
 FASTJET_BEGIN_NAMESPACE      // defined in fastjet/internal/base.hh
 namespace contrib{
