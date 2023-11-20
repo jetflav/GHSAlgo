@@ -52,8 +52,8 @@ namespace contrib {
 #endif
 
   struct GHSInfo {
-    double alpha = 2.0;
-    double omega = 0.0;
+    double alpha;
+    double omega;
     unsigned njets;
     vector<PseudoJet> jets;
     FlavRecombiner flav_recombiner;
@@ -244,12 +244,12 @@ namespace contrib {
     if (jets_base.size() == 0) return jets_base;
 
 #ifdef VERBOSE
-    cout << " -- apply pt threshold & define clusters -- " << endl;
+    cout << " -- apply pt threshold & define particles -- " << endl;
 #endif
 
     const ClusterSequence &cs = *(jets_base[0].associated_cs());
-    vector<PseudoJet> clusters(cs.jets().begin(),
-                               cs.jets().begin() + cs.n_particles());
+    vector<PseudoJet> inputs(cs.jets().begin(),
+                              cs.jets().begin() + cs.n_particles());
 
     // ghs_fiducial_warning.warn("Watch out: in run_GHS a fiducial selector is
     // being applied to jets_base (this should be removed; but then run_GHS needs
@@ -287,7 +287,7 @@ namespace contrib {
       j.set_user_index(1);  //< the signal that it is a jet
       all.push_back(j);
     }
-    for (auto &c : clusters) {
+    for (auto &c : inputs) {
       //> value <= 0 indicates that we're dealing with a flavour cluster
       //>   0:  flavour cluster not associated with a jet
       //>  -i:  flavour cluster associated with jet `i`
@@ -307,14 +307,14 @@ namespace contrib {
     }
 
 #ifdef VERBOSEDIJ
-    cout << "initial jets + clusters: (0 = cluster, 1 = jet)" << endl;
+    cout << "initial jets + inputs: (0 = cluster, 1 = jet)" << endl;
     for (unsigned int i = 0; i < all.size(); i++) {
       cout << i << " ";
       print_PJ(&cout, all[i], 5, true, true);
       cout << endl;
     }
 #endif
-    // all.insert(all.end(), clusters.begin(), clusters.end());
+    // all.insert(all.end(), inputs.begin(), inputs.end());
     //  set up nnh
     NNH<GHSBriefJet, GHSInfo> nnh(all, &ghs_info);
     int iA, iB;
@@ -357,13 +357,13 @@ namespace contrib {
                << iB << endl;
 #endif
         } else {
-          //> iA & iB are both flavour clusters
+          //> iA & iB are both flavour inputs
           // merge
           PseudoJet new_pseudojet = all[iA];
           new_pseudojet.reset_momentum(
               all[iA] + all[iB]);  //<- resetting only the momentum keeps the
           //> determine the jet association for the merged cluster:
-          //> can only be associated with a jet if *both* clusters were
+          //> can only be associated with a jet if *both* inputs were
           // associated with the *same* jet
           if (all[iA].user_index() == all[iB].user_index()) {
             new_pseudojet.set_user_index(all[iA].user_index());
@@ -376,7 +376,7 @@ namespace contrib {
           /// set FlavInfo attribute
           new_pseudojet.set_user_info(new FlavHistory(flav));
 #ifdef VERBOSE
-          cout << "two flavoured clusters combine." << endl;
+          cout << "two flavoured inputs combine." << endl;
           cout << "iA = " << iA;
           print_PJ(&cout, all[iA], 12, true, true);
           cout << endl;
