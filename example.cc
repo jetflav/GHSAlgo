@@ -65,10 +65,7 @@ int main(int iargc, char **argv){
 
   // GHS parameters:
   double GHS_alpha = 1.0; // < flav-kt distance parameter alpha
-  double GHS_beta  = 1.0; // < SoftDrop parameter beta for flavour clusters
-  double GHS_zcut  = 0.1; // < SoftDrop zcut for flavour clusters
-  double GHS_Rcut  = 0.1; // < Rcut parameter
-  double GHS_omega = 0.0; // < omega parameter for GHS_Omega (omega = 0 uses DeltaR_ij^2)
+  double GHS_omega = 2.0; // < omega parameter for GHS_Omega (omega = 0 uses DeltaR_ij^2)
 
   double ptcut = 15.0; // < overall ptcut
 
@@ -76,9 +73,6 @@ int main(int iargc, char **argv){
   cout << "base jet definition: " << base_jet_def.description() << endl;
   cout << "GHS jet definition:  " << endl
        << " alpha = "  << GHS_alpha << endl
-       << " beta  = "  << GHS_beta  << endl
-       << " zcut  = "  << GHS_zcut  << endl
-       << " Rcut  = "  << GHS_Rcut  << endl
        << " omega = "  << GHS_omega << endl
        << " (ptcut = " << ptcut << " GeV)" << endl;
 
@@ -93,14 +87,14 @@ int main(int iargc, char **argv){
     cout << "\n#---------------------------------------------------------------\n";
     cout << "# read event " << iev << " with " << event.size() << " particles" << endl;
 
-    // run the jet clustering with the base jet definition, and feed those jets
-    // to the GHS runner
+    // run the jet clustering with the base jet definition
     vector<PseudoJet> base_jets = base_jet_def(event);
-    vector<PseudoJet> GHS_jets  = run_GHS(base_jets, ptcut,
-          GHS_beta, GHS_zcut, GHS_Rcut, GHS_alpha, GHS_omega);
+
+    // run the GHS algorithm: require base jets & a hardness cut that should be chosen to match the fiducial selection
+    vector<PseudoJet> GHS_jets  = run_GHS(base_jets, ptcut, GHS_alpha, GHS_omega, flav_recombiner);
 
     // make sure the sizes are the same (after the ptcut)
-    Selector select_pt = SelectorPtMin(ptcut); 
+    Selector select_pt = SelectorPtMin(ptcut);
     vector<PseudoJet> selected_base_jets = select_pt(base_jets);
 
     assert(selected_base_jets.size() == GHS_jets.size());
